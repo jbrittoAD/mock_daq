@@ -8,10 +8,10 @@ This project provides a mock implementation of a Data Acquisition (DAQ) device, 
 
 - `mock_daq.py`: Contains the `MockDAQDevice` class with methods to configure, read, write, toggle, and blink digital pins.
 - `test_mock_daq.py`: Contains unit tests for the `MockDAQDevice` class using `pytest`.
-- `simulation.py`: Contains a script to simulate and demonstrate the blinking functionality of the `MockDAQDevice`.
+- `simulation.py`: Contains a script to simulate and demonstrate (and example usage of Class) the blinking functionality of the `MockDAQDevice`.
 - `test.yml`: GitHub Actions workflow configuration for CI/CD.
 
-## Why Use Threading Instead of Multiprocessing
+## Why Use Threading Instead of Multiprocessing on `MockDAQDevice` class
 
 ### Advantages of Threading
 
