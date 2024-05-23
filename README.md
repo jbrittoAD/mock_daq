@@ -1,80 +1,99 @@
-README
-porque utilizei multiprocessing ao invez de threadgind no codigo do mock:
-Vamos refazer a implementação utilizando `multiprocessing` em vez de `threading`. A principal razão para escolher `multiprocessing` sobre `threading` é que o Python possui o GIL (Global Interpreter Lock), que pode limitar a eficiência dos threads em algumas situações. O `multiprocessing` cria processos separados, cada um com sua própria memória, permitindo uma melhor utilização de múltiplos núcleos de CPU, o que pode resultar em melhor desempenho em algumas tarefas.
+# MockDAQDevice Project
 
-Aqui está a versão atualizada usando `multiprocessing`:
+## Overview
 
-```python
-# mock_daq.py
-import time
-import multiprocessing
+This project provides a mock implementation of a Data Acquisition (DAQ) device, `MockDAQDevice`, designed to simulate the behavior of digital input/output pins. The project includes a main class for the device, unit tests, and a simulation script to demonstrate the functionality of the device. It also includes a GitHub Actions workflow for continuous integration and continuous deployment (CI/CD).
 
-class MockDAQDevice:
-    def __init__(self):
-        self.manager = multiprocessing.Manager()
-        self.pins = self.manager.dict()
-        self.toggled_pins = self.manager.dict()
+## Project Structure
 
-    def configure_digital_channel(self, pin, direction):
-        self.pins[pin] = {
-            'direction': direction,
-            'state': False
-        }
+- `mock_daq.py`: Contains the `MockDAQDevice` class with methods to configure, read, write, toggle, and blink digital pins.
+- `test_mock_daq.py`: Contains unit tests for the `MockDAQDevice` class using `pytest`.
+- `simulation.py`: Contains a script to simulate and demonstrate the blinking functionality of the `MockDAQDevice`.
+- `test.yml`: GitHub Actions workflow configuration for CI/CD.
 
-    def write_digital_pin(self, pin, state):
-        if pin in self.pins and self.pins[pin]['direction'] == 'output':
-            self.pins[pin]['state'] = state
-        else:
-            raise ValueError("Pin not configured as output or does not exist.")
+## Why Use Threading Instead of Multiprocessing
 
-    def read_digital_pin(self, pin):
-        if pin in self.pins and self.pins[pin]['direction'] == 'input':
-            return self.pins[pin]['state']
-        else:
-            raise ValueError("Pin not configured as input or does not exist.")
+### Advantages of Threading
 
-    def toggle_pin(self, pin, interval=1):
-        if pin not in self.pins:
-            raise ValueError("Pin does not exist.")
-        if self.pins[pin]['direction'] != 'input':
-            raise ValueError("Pin is not configured as input.")
+1. **Shared Memory**: Threading allows sharing memory space between threads, making it easier to manage the state of pins without the need for complex inter-process communication (IPC). This is essential for the `MockDAQDevice` where the state of pins needs to be consistently accessed and modified.
+  
+2. **Lower Overhead**: Threads have lower overhead compared to processes. Starting a new thread is faster and uses less memory than starting a new process. Since the blinking operation is not CPU-intensive but rather I/O-bound (involves sleeping and toggling states), threading is more efficient.
 
-        def toggle(pins, toggled_pins, pin, interval):
-            while True:
-                current_state = pins[pin]['state']
-                pins[pin]['state'] = not current_state
-                toggled_pins[pin] = pins[pin]['state']
-                time.sleep(interval)
+3. **Simplicity**: Managing threads is generally simpler for I/O-bound tasks. For the `MockDAQDevice`, the operations are primarily about waiting (sleeping) and toggling states, which are well-suited for threading.
 
-        process = multiprocessing.Process(target=toggle, args=(self.pins, self.toggled_pins, pin, interval))
-        process.daemon = True
-        process.start()
+4. **GIL (Global Interpreter Lock)**: Python's Global Interpreter Lock (GIL) allows only one thread to execute Python bytecode at a time. For I/O-bound operations like blinking pins, the GIL is less of an issue, making threading a suitable choice.
+
+### Disadvantages of Multiprocessing
+
+1. **Higher Overhead**: Multiprocessing involves more overhead in creating and managing processes. Each process runs in its own memory space, which adds complexity and resource consumption.
+   
+2. **Complex Communication**: Sharing state between processes requires IPC mechanisms such as queues or pipes, which can be more complex to implement and manage.
+
+### Justification for Using Threading
+
+Given that the `MockDAQDevice` involves managing the state of pins with operations that are primarily I/O-bound (sleeping and toggling), threading provides a more efficient and simpler approach. The overhead and complexity of multiprocessing are not justified for this scenario, where the main tasks are lightweight and benefit from shared memory access.
+
+## Random Delay Function
+
+The `random_microsecond_delay` function simulates a real-world delay that might occur in an actual DAQ device. This function generates a random delay within a specified range, representing the unpredictable timing variations that can happen in real hardware operations. Incorporating this delay into the simulation provides a more realistic behavior, making the simulation closer to how an actual DAQ device would perform. This enhances the robustness and reliability of the simulation, allowing for better testing and understanding of how the device handles real-time operations and timing uncertainties.
+
+## Simulation vs. Unit Tests
+
+- **Simulation (`simulation.py`)**:
+  - **Purpose**: Demonstrates the usage and functionality of the `MockDAQDevice` in a practical scenario.
+  - **Benefit**: Allows observing the behavior of the device over time, making it easier to understand how the device operates in real-world conditions.
+
+- **Unit Tests (`test_mock_daq.py`)**:
+  - **Purpose**: Ensures the correctness of the `MockDAQDevice`'s functionality through automated tests.
+  - **Benefit**: Provides a reliable way to verify that each method works as expected, catching bugs and regressions early in the development process.
+
+Having both simulations and unit tests provides a comprehensive approach to validation: simulations for understanding usage and unit tests for ensuring correctness.
+
+## Documentation
+
+For automated documentation, the Sphinx library would be utilized to generate comprehensive documentation from the code. Unfortunately, due to time constraints, this has not been implemented yet. Sphinx would provide a robust solution for maintaining up-to-date and easily navigable documentation for the project.
+
+## How to Run the Project
+
+### Prerequisites
+
+Ensure you have Python installed. It's recommended to use a virtual environment to manage dependencies.
+
+### Cloning the Repository
+
+```sh
+git clone https://github.com/jbrittoAD/mock_daq
+cd mock_daq
 ```
 
-### Explicação
+### Setting Up the Virtual Environment
 
-- **`multiprocessing.Manager`**: Usamos `Manager` para criar dicionários compartilhados (`pins` e `toggled_pins`) entre processos.
-- **`multiprocessing.Process`**: Substitui `threading.Thread`, criando um novo processo que executa a função `toggle`.
-- **Argumentos**: Passamos `self.pins`, `self.toggled_pins`, `pin`, e `interval` como argumentos para garantir que o processo filho tenha acesso às variáveis necessárias.
+```sh
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+pip install -r requirements.txt
+```
 
-### Benefícios do `multiprocessing`
+### Running the Simulation
 
-1. **Melhor Utilização de CPU**: `multiprocessing` pode utilizar múltiplos núcleos de CPU, permitindo um melhor desempenho em tarefas que podem ser paralelizadas.
-2. **Isolamento de Processos**: Cada processo tem seu próprio espaço de memória, o que pode reduzir o risco de condições de corrida e outros problemas de concorrência associados ao compartilhamento de memória.
-3. **Superação do GIL**: O GIL pode limitar a execução simultânea de threads Python, mas não afeta processos separados. Com `multiprocessing`, cada processo tem seu próprio interpretador Python e seu próprio GIL, o que pode melhorar o desempenho em tarefas computacionalmente intensivas.
+```sh
+python simulation.py
+```
 
-### Considerações
+### Running Unit Tests
 
-- **Overhead de Processos**: Criar novos processos pode ter mais overhead do que criar novos threads, especialmente para tarefas que não são computacionalmente intensivas.
-- **Comunicação entre Processos**: A comunicação entre processos é mais complexa e mais lenta do que a comunicação entre threads, que compartilham o mesmo espaço de memória.
+```sh
+pytest test_mock_daq.py
+```
 
-Para este caso, como estamos simulando a alternância de pinos, o uso de `multiprocessing` é mais adequado se estivermos preocupados com o desempenho em um ambiente com múltiplos núcleos de CPU.
+### Running Tests with GitHub Actions (CI/CD)
 
-Embora `multiprocessing` possa ter benefícios significativos em termos de desempenho e isolamento de processos, ele também apresenta algumas desvantagens em comparação com `threading`:
+The `test.yml` file in the `.github/workflows` directory is configured to run the tests automatically on GitHub. To set up the CI/CD pipeline:
 
-### Desvantagens do `multiprocessing` em relação ao `threading`
+1. Push your code to a GitHub repository.
+2. Ensure the `test.yml` workflow file is in the `.github/workflows` directory.
+3. GitHub Actions will automatically run the tests on each push or pull request.
 
-1. **Overhead de Criação de Processos**: A criação de novos processos é mais custosa em termos de recursos do sistema (tempo e memória) do que a criação de novas threads.
-2. **Comunicação entre Processos**: A comunicação entre processos (IPC - Inter-Process Communication) é mais complexa e geralmente mais lenta do que a comunicação entre threads, pois os processos não compartilham o mesmo espaço de memória.
-3. **Consumo de Memória**: Cada processo tem seu próprio espaço de memória, o que pode levar a um maior consumo de memória em comparação com threads que compartilham o mesmo espaço de memória.
-4. **Complexidade**: Manipular múltiplos processos pode ser mais complexo e exigir mais código para coordenar as ações entre processos, especialmente quando se necessita de compartilhamento de dados entre eles.
+## Conclusion
+
+This project provides a mock implementation of a DAQ device, complete with unit tests and simulation scripts to demonstrate its functionality. Using threading for pin blinking operations ensures efficient and manageable code, while having both simulations and tests ensures comprehensive validation of the device's behavior. By following the instructions above, you can clone, run, and test the project effectively. Incorporating Sphinx for automated documentation in the future will further enhance the project's maintainability and usability.

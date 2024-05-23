@@ -7,7 +7,7 @@ from random import randint
 TODO list:
     * Make analog input and output
     * Make communication simulator
-    * terminar a tolerancia do delay
+    * Make limits to delay tolerance before hardware test
 """
 
 # Basic config of logger
@@ -24,8 +24,8 @@ class MockDAQDevice:
         and sets the minimum and maximum delay values for random delays in nanoseconds.
         """
         self.pins = {}
-        self.delay_min = 0  # Minimum delay to change the port state, is in nanoseconds
-        self.delay_max = 1 # Tolerance delay to change the port state, is in nanoseconds
+        self.delay_min = 1  # Minimum delay to change the port state, is in nanoseconds
+        self.delay_max = 1000 # Tolerance delay to change the port state, is in nanoseconds
         self.blink_threads = {}
         self.lock = threading.Lock()
         
@@ -66,9 +66,9 @@ class MockDAQDevice:
 
         This function simulates the delay behavior of a physical device.
         """
-        # Gera um valor aleatório entre 1 e 25 microsegundos
+        # Random delay to simulate hardware variability
         delay_nanoseconds = randint(self.delay_min, self.delay_max )
-        # Aguarda o tempo aleatório em nanosegundos
+        # Sleep for the desired duration
         time.nanosleep(delay_nanoseconds)
 
     def configure_digital_channel(self, pin:str, direction:str):
@@ -202,7 +202,6 @@ class MockDAQDevice:
                 raise ValueError("Pin does not exist.")
             if self.pins[pin]['blink']:
                 logger.error(f"Attempt to start blinking pin {pin} which is already blinking.")
-                raise ValueError("Pin is already blinking.")
             self.pins[pin]['blink'] = True
             blink_thread = threading.Thread(target=self._blink_pin, args=(pin, interval))
             self.blink_threads[pin] = blink_thread
@@ -228,7 +227,6 @@ class MockDAQDevice:
                 raise ValueError("Pin does not exist.")
             if not self.pins[pin]['blink']:
                 logger.error(f"Attempt to stop blinking pin {pin} which is not blinking.")
-                raise ValueError("Pin is not blinking.")
             self.pins[pin]['blink'] = False
             self.blink_threads[pin].join()
             del self.blink_threads[pin]

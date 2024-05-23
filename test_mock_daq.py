@@ -1,4 +1,4 @@
-# test_mock_daq.py
+
 import time
 import pytest
 from mock_daq import MockDAQDevice
